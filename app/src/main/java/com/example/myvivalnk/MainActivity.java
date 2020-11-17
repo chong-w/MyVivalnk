@@ -3,13 +3,17 @@ package com.example.myvivalnk;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.multidex.MultiDex;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.vivalnk.sdk.Callback;
@@ -48,6 +52,20 @@ public class MainActivity extends AppCompatActivity {
 
     private Button startBtn, stopBtn;
     private EditText fileNameEdit;
+    private TextView charge;
+    @SuppressLint("HandlerLeak")
+    private Handler handler = new Handler(){
+        public void handleMessage(Message msg){
+            switch (msg.what){
+                case 1:
+                    charge.setText(""+msg.arg1);
+                    break;
+                default:
+                    break;
+            }
+        };
+    };
+    private boolean collecting = false;
 
 
 //            getCommandRequest(CommandType.eraseFlash, 3000);
@@ -60,6 +78,7 @@ public class MainActivity extends AppCompatActivity {
             if(device.getName().equals(targetDeviceName)){
                 targetDevice = device;
                 Log.e(TAG, "已扫描到设备"+ device.getName());
+                Toast.makeText(MainActivity.this,"扫描设备...",Toast.LENGTH_LONG).show();
             }
 
             // TODO: 2020/11/12 扫描和连接应该分开，具体怎么把扫描到设备通知给连接？
@@ -85,7 +104,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onConnected(Device device) {
-//            Toast.makeText(MainActivity.this,"已连接到设备"+ device.getName(),Toast.LENGTH_SHORT).show();
+            Toast.makeText(MainActivity.this,"已连接到设备"+ device.getName(),Toast.LENGTH_LONG).show();
             Log.e(TAG, "已连接到设备"+ device.getName());
         }
 
@@ -103,6 +122,11 @@ public class MainActivity extends AppCompatActivity {
         public void onDeviceReady(Device device) {
 
         }
+
+        @Override
+        public void onConnecting(Device device) {
+
+        }
     };
 
 
@@ -113,17 +137,16 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onReceiveSimpleData(Device device, Map<String, Object> map) {
-
         }
 
         @Override
         public void onReceiveData(Device device, Map<String, Object> map) {
-
+            Log.e(TAG, "onReceiveData: ");
             SampleData data = (SampleData) map.get("data");
-            if(startBtn.getText().toString().equals("停止采")){
+            if(collecting){
                 try {
                     xieru((int[])data.extras.get("ecg"),fileNameEdit.getText().toString());
-//                    Toast.makeText(MainActivity.this,"接收数据...",Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this,"接收数据...",Toast.LENGTH_SHORT).show();
                     Log.e(TAG, "接收数据..." );
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -131,15 +154,16 @@ public class MainActivity extends AppCompatActivity {
             }else {
                 Log.e(TAG, "丢弃数据..." );
             }
-
-//            if(stop){
-//
-//            }
-
         }
 
         @Override
         public void onBatteryChange(Device device, Map<String, Object> map) {
+            int battery = ((BatteryInfo)map.get("data")).getPercent();
+            Message msg = new Message();
+            msg.what = 1;
+            msg.arg1 = battery;
+            handler.sendMessage(msg);
+            Log.e(TAG, "onBatteryChange: "+ battery);
         }
 
         @Override
@@ -174,16 +198,13 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        charge = findViewById(R.id.charge);
         startBtn = findViewById(R.id.start);
         startBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 eraseFlash(); //清除之前的数据
-                if(startBtn.getText().toString().equals("开始采")){
-                    startBtn.setText("停止采");
-                }else {
-                    startBtn.setText("开始采");
-                }
+                collecting = true;
             }
         });
 
@@ -191,8 +212,7 @@ public class MainActivity extends AppCompatActivity {
         stopBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                VitalClient.getInstance().disconnect(targetDevice);
-                Log.e(TAG, "蓝牙连接已断开");
+                disConnect();//断开蓝牙
             }
         });
         fileNameEdit = findViewById(R.id.fileName);
@@ -224,21 +244,6 @@ public class MainActivity extends AppCompatActivity {
                 .setTimeout(5 * 1000)
                 .build();
         VitalClient.getInstance().startScan(options, myScanListener);
-
-        //connect
-
-//        BleConnectOptions opts = new BleConnectOptions.Builder()
-//                .setConnectTimeout(10 * 1000)
-//                .setAutoConnect(true)
-//                .build();
-//
-//        if(targetDevice!=null){
-//            VitalClient.getInstance().connect(targetDevice,opts,myConnectListener);
-//        }else {
-//            Log.e(TAG, "targetDevice=null" );
-//        }
-
-
     }
 
     public void xieru(int[] a, String filename){
@@ -263,6 +268,12 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    public void disConnect(){
+//        VitalClient.getInstance().disconnect(targetDevice);
+        VitalClient.getInstance().disconnectAll();
+        Toast.makeText(MainActivity.this,"蓝牙连接已断开",Toast.LENGTH_SHORT).show();
+        Log.e(TAG, "蓝牙连接已断开");
+    }
     public void eraseFlash(){
         CommandRequest eraseFlashRequest = new CommandRequest.Builder()
                 //set the request timeout, default is 10 second
@@ -280,7 +291,7 @@ public class MainActivity extends AppCompatActivity {
             }
             @Override
             public void onComplete(Map<String, Object> data) {
-//                Toast.makeText(MainActivity.this,"已擦除旧数据",Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this,"已擦除旧数据",Toast.LENGTH_SHORT).show();
                             Log.e(TAG, "已擦除旧数据" );
             }
         });
