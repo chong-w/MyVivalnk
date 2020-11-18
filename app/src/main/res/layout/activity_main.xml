@@ -7,20 +7,37 @@
     android:orientation="vertical"
     tools:context=".MainActivity"
     android:gravity="top|center">
-
+    <Button
+        android:id="@+id/scan"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="选择设备"
+        android:textSize="20dp"/>
     <EditText
         android:id="@+id/fileName"
         android:layout_width="match_parent"
         android:layout_height="40dp"
         android:hint="请输入文件名"/>
     <Button
-        android:id="@+id/start"
+        android:id="@+id/receive"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="开始采"
+        android:text="接收数据"
         android:textSize="20dp"/>
     <Button
-        android:id="@+id/stop"
+        android:id="@+id/unreceive"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="不接收数据"
+        android:textSize="20dp"/>
+    <Button
+        android:id="@+id/erase"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="擦除数据"
+        android:textSize="20dp"/>
+    <Button
+        android:id="@+id/end"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="结束"
@@ -40,6 +57,23 @@
             android:layout_height="wrap_content"
             android:textSize="20dp"
             android:text="UNKNOWN"/>
+
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="20dp"
+            android:text="数据:"/>
+        <TextView
+            android:id="@+id/dataNum"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="20dp"
+            android:text="0"/>
 
     </LinearLayout>
 
