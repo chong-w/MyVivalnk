@@ -19,6 +19,7 @@ import android.os.Message;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -56,7 +57,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class MainActivity extends Activity implements View.OnClickListener{
+public class MainActivity extends Activity implements View.OnClickListener {
 
     private static final String TAG = "MainActivity";
     private static final int chargeChange = 1;
@@ -65,24 +66,26 @@ public class MainActivity extends Activity implements View.OnClickListener{
     private Device targetDevice;
     private ArrayList<Device> scannedDeviceList = new ArrayList<Device>();
 
-    private Button receiveBtn,unreceiveBtnBtn,showScanBtn,eraseBtn,endBtn;
+    private Button receiveBtn, unreceiveBtnBtn, showScanBtn, endBtn;
     private EditText fileNameEdit;
-    private TextView charge,dataNum;
+    private TextView charge, dataNum;
     private int dataN = 0;//记录接收了多少组数据
     @SuppressLint("HandlerLeak")
-    private Handler handler = new Handler(){
-        public void handleMessage(Message msg){
-            switch (msg.what){
+    private Handler handler = new Handler() {
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
                 case chargeChange:
-                    charge.setText(""+msg.arg1);
+                    charge.setText("" + msg.arg1);
                     break;
                 case getData:
-                    dataNum.setText(""+msg.arg1);
+                    dataNum.setText("" + msg.arg1);
                     break;
                 default:
                     break;
             }
-        };
+        }
+
+        ;
     };
 
 //    //扫描，连接，接收数据，擦除数据的回调
@@ -106,8 +109,8 @@ public class MainActivity extends Activity implements View.OnClickListener{
         receiveBtn.setOnClickListener(this);
         unreceiveBtnBtn = findViewById(R.id.unreceive);
         unreceiveBtnBtn.setOnClickListener(this);
-        eraseBtn = findViewById(R.id.erase);
-        eraseBtn.setOnClickListener(this);
+//        eraseBtn = findViewById(R.id.erase);
+//        eraseBtn.setOnClickListener(this);
         endBtn = findViewById(R.id.end);
         endBtn.setOnClickListener(this);
         fileNameEdit = findViewById(R.id.fileName);
@@ -120,22 +123,23 @@ public class MainActivity extends Activity implements View.OnClickListener{
 
     @Override
     public void onClick(View view) {
-        switch(view.getId()){
+        switch (view.getId()) {
             case R.id.scan:
 //                Log.e(TAG, "scan" );
                 showScannedDevice();
                 break;
             case R.id.receive:
 //                Log.e(TAG, "receive" );
+                eraseFlash(targetDevice);  //接收之前先把老数据清空，防止接收老数据
                 registDataReceiver(targetDevice);
                 break;
             case R.id.unreceive:
 //                Log.e(TAG, "unreceive" );
                 unregistDataReceiver(targetDevice);
                 break;
-            case R.id.erase:
-                eraseFlash(targetDevice);
-                break;
+//            case R.id.erase:
+//                eraseFlash(targetDevice);
+//                break;
             case R.id.end:
                 disConnect(targetDevice);
                 break;
@@ -145,7 +149,7 @@ public class MainActivity extends Activity implements View.OnClickListener{
     }
 
     //内存，蓝牙，定位权限申请
-    public void permissionReq(){
+    public void permissionReq() {
         String[] permissions = new String[]{
                 Manifest.permission.BLUETOOTH,
                 Manifest.permission.BLUETOOTH_ADMIN,
@@ -153,21 +157,21 @@ public class MainActivity extends Activity implements View.OnClickListener{
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE,
         };
-        List<String>  mPermissionList = new ArrayList<>();
-        for (int i = 0;i<permissions.length;i++){
-            if (ContextCompat.checkSelfPermission(this,permissions[i])!=
-                    PackageManager.PERMISSION_GRANTED){
+        List<String> mPermissionList = new ArrayList<>();
+        for (int i = 0; i < permissions.length; i++) {
+            if (ContextCompat.checkSelfPermission(this, permissions[i]) !=
+                    PackageManager.PERMISSION_GRANTED) {
                 mPermissionList.add(permissions[i]);//添加还未授予的权限到mPermissionList中
             }
         }
         //申请权限
-        if (mPermissionList.size()>0){//有权限没有通过，需要申请
-            ActivityCompat.requestPermissions(this,permissions,100);
+        if (mPermissionList.size() > 0) {//有权限没有通过，需要申请
+            ActivityCompat.requestPermissions(this, permissions, 100);
         }
     }
 
     //初始化、蓝牙扫描
-    public void init(){
+    public void init() {
 
         VitalClient.Builder builder = new VitalClient.Builder();
         NetworkGrantConfig networkGrantConfig = new NetworkGrantConfig();
@@ -192,28 +196,29 @@ public class MainActivity extends Activity implements View.OnClickListener{
             @Override
             public void onDeviceFound(Device device) {
 //                Log.e(TAG, device.getName() );
-                if(!scannedDeviceList.contains(device)){
+                if (!scannedDeviceList.contains(device)) {
                     scannedDeviceList.add(device);
                 }
             }
+
             @Override
             public void onStart() {
 //                Log.e(TAG, "开始扫描");
-                Toast.makeText(MainActivity.this,"开始扫描",Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "开始扫描", Toast.LENGTH_SHORT).show();
             }
 
             @Override
             public void onStop() {
 //                Log.e(TAG, "扫描结束");
-                Toast.makeText(MainActivity.this,"扫描结束",Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "扫描结束", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     //蓝牙扫描结果
-    public void showScannedDevice(){
+    public void showScannedDevice() {
         List<String> nameList = new ArrayList<>();
-        for (Device bd:scannedDeviceList) {
+        for (Device bd : scannedDeviceList) {
             nameList.add(bd.getName());
         }
         //弹出
@@ -221,33 +226,33 @@ public class MainActivity extends Activity implements View.OnClickListener{
         LayoutInflater inflater = (LayoutInflater) context.getSystemService(LAYOUT_INFLATER_SERVICE);
         View layout = inflater.inflate(R.layout.activity_device_list, null);
         ListView deviceListView = (ListView) layout.findViewById(R.id.binded_devices);
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(context,R.layout.support_simple_spinner_dropdown_item,nameList);
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(context, R.layout.support_simple_spinner_dropdown_item, nameList);
         deviceListView.setAdapter(adapter);
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setView(layout);
+        final AlertDialog alertDialog = builder.create();
+        alertDialog.show();
         deviceListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> arg0, View arg1, int position, long id) {
                 targetDevice = scannedDeviceList.get(position);
                 connectDevice(targetDevice);
-//                registDataReceiver(targetDevice);
+                alertDialog.dismiss();
             }
         });
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setView(layout);
-        AlertDialog alertDialog = builder.create();
-        alertDialog.show();
     }
 
     //蓝牙连接
-    public void connectDevice(Device device){
+    public void connectDevice(Device device) {
         BleConnectOptions opts = new BleConnectOptions.Builder()
                 .setConnectTimeout(10 * 1000)
                 .setAutoConnect(true)
                 .build();
-        VitalClient.getInstance().connect(device,opts,new BluetoothConnectListener(){
+        VitalClient.getInstance().connect(device, opts, new BluetoothConnectListener() {
 
             @Override
             public void onConnected(Device device) {
-                Toast.makeText(MainActivity.this,"已连接到设备"+ device.getName(),Toast.LENGTH_LONG).show();
+                Toast.makeText(MainActivity.this, "已连接到设备" + device.getName(), Toast.LENGTH_LONG).show();
 //                eraseFlash(targetDevice);
 //                Log.e(TAG, "已连接到设备"+ device.getName());
             }
@@ -257,6 +262,7 @@ public class MainActivity extends Activity implements View.OnClickListener{
 //                Toast.makeText(MainActivity.this,"onServiceReady"+ device.getName(),Toast.LENGTH_LONG).show();
 //                Log.e(TAG, "onServiceReady"+ device.getName());
             }
+
             @Override
             public void onDeviceReady(Device device) {
 //                Toast.makeText(MainActivity.this,"onDeviceReady"+ device.getName(),Toast.LENGTH_LONG).show();
@@ -266,7 +272,7 @@ public class MainActivity extends Activity implements View.OnClickListener{
     }
 
     //注册数据接收
-    public void registDataReceiver(Device device){
+    public void registDataReceiver(Device device) {
         VitalClient.getInstance().registDataReceiver(device, new DataReceiveListener() {
             @Override
             public void onReceiveData(Device device, Map<String, Object> map) {
@@ -278,7 +284,7 @@ public class MainActivity extends Activity implements View.OnClickListener{
 //                Log.e(TAG, "onReceiveData: ");
                 SampleData data = (SampleData) map.get("data");
                 try {
-                    write((int[])data.extras.get("ecg"),fileNameEdit.getText().toString());
+                    write((int[]) data.extras.get("ecg"), fileNameEdit.getText().toString());
 //                    Toast.makeText(MainActivity.this,"接收数据...",Toast.LENGTH_SHORT).show();
 //                    Log.e(TAG, "接收数据..." );
                 } catch (Exception e) {
@@ -288,7 +294,7 @@ public class MainActivity extends Activity implements View.OnClickListener{
 
             @Override
             public void onBatteryChange(Device device, Map<String, Object> map) {
-                int battery = ((BatteryInfo)map.get("data")).getPercent();
+                int battery = ((BatteryInfo) map.get("data")).getPercent();
                 Message msg = new Message();
                 msg.what = chargeChange;
                 msg.arg1 = battery;
@@ -304,7 +310,7 @@ public class MainActivity extends Activity implements View.OnClickListener{
     }
 
     //反注册数据接收
-    public void unregistDataReceiver(Device device){
+    public void unregistDataReceiver(Device device) {
         VitalClient.getInstance().unregistDataReceiver(device);
         dataN = 0;
         Message msg = new Message();
@@ -314,14 +320,14 @@ public class MainActivity extends Activity implements View.OnClickListener{
     }
 
     //蓝牙断开
-    public void disConnect(Device device){
+    public void disConnect(Device device) {
         VitalClient.getInstance().disconnect(device);
-        Toast.makeText(MainActivity.this,"蓝牙连接已断开",Toast.LENGTH_SHORT).show();
+        Toast.makeText(MainActivity.this, "蓝牙连接已断开", Toast.LENGTH_SHORT).show();
 //        Log.e(TAG, "蓝牙连接已断开");
     }
 
     //擦除flash
-    public void eraseFlash(Device device){
+    public void eraseFlash(Device device) {
         CommandRequest eraseFlashRequest = new CommandRequest.Builder()
                 //set the request timeout, default is 10 second
                 .setTimeout(3000)
@@ -333,19 +339,20 @@ public class MainActivity extends Activity implements View.OnClickListener{
         VitalClient.getInstance().execute(device, eraseFlashRequest, new Callback() {
             @Override
             public void onStart() {
-                Toast.makeText(MainActivity.this,"已擦除旧数据",Toast.LENGTH_SHORT).show();
-//                Log.e(TAG, "开始擦除旧数据" );
+//                Toast.makeText(MainActivity.this,"已擦除旧数据",Toast.LENGTH_SHORT).show();
+                Log.e(TAG, "开始擦除旧数据");
             }
+
             @Override
             public void onComplete(Map<String, Object> data) {
 //                Toast.makeText(MainActivity.this,"已擦除旧数据",Toast.LENGTH_SHORT).show();
-//                Log.e(TAG, "已擦除旧数据" );
+                Log.e(TAG, "已擦除旧数据");
             }
         });
     }
 
     //保存数据
-    public void write(int[] a, String filename){
+    public void write(int[] a, String filename) {
 //        Log.e(TAG, "write FirstECG: "+ a[0] );
         String path = "/wangc_vivalnk/";
         //如果不存在，就创建目录
@@ -353,12 +360,12 @@ public class MainActivity extends Activity implements View.OnClickListener{
         if (!dir.exists()) {
             dir.mkdirs();
         }
-        FileWriter fileWriter= null;
+        FileWriter fileWriter = null;
         try {
-            if(filename==null) filename = "noName";
-            fileWriter = new FileWriter(""+dir+"/"+filename+".txt",true);
+            if (filename == null) filename = "noName";
+            fileWriter = new FileWriter("" + dir + "/" + filename + ".txt", true);
             for (int i = 0; i < a.length; i++) {
-                fileWriter.write(String.valueOf(a[i])+"\n");//换行转意
+                fileWriter.write(String.valueOf(a[i]) + "\n");//换行转意
             }
             fileWriter.flush();
             fileWriter.close();

@@ -30,12 +30,12 @@
         android:layout_height="wrap_content"
         android:text="不接收数据"
         android:textSize="20dp"/>
-    <Button
-        android:id="@+id/erase"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="擦除数据"
-        android:textSize="20dp"/>
+<!--    <Button-->
+<!--        android:id="@+id/erase"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:text="擦除数据"-->
+<!--        android:textSize="20dp"/>-->
     <Button
         android:id="@+id/end"
         android:layout_width="wrap_content"
@@ -50,24 +50,26 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="20dp"
-            android:text="电量:"/>
+            android:text="剩余电量:"/>
+
         <TextView
             android:id="@+id/charge"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="20dp"
-            android:text="UNKNOWN"/>
+            android:layout_height="match_parent"
+            android:text="UNKNOWN"
+            android:textSize="20dp" />
 
     </LinearLayout>
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal">
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="20dp"
-            android:text="数据:"/>
+            android:text="已接收数据:"
+            android:textSize="20dp" />
         <TextView
             android:id="@+id/dataNum"
             android:layout_width="wrap_content"
