@@ -1,5 +1,6 @@
 package com.example.myvivalnk;
 
+import android.os.*;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -12,10 +13,6 @@ import android.app.AlertDialog;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.os.Bundle;
-import android.os.Environment;
-import android.os.Handler;
-import android.os.Message;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -52,33 +49,44 @@ import com.vivalnk.sdk.open.config.NetworkGrantConfig;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class MainActivity extends Activity implements View.OnClickListener {
 
     private static final String TAG = "MainActivity";
     private static final int chargeChange = 1;
     private static final int getData = 2;
+    private static final int statusChange = 3;
+    private static final String[] statusList = {"蓝牙未连接","正在扫描","扫描结束","已连接至设备","正在连接"};
 
     private Device targetDevice;
     private ArrayList<Device> scannedDeviceList = new ArrayList<Device>();
 
     private Button receiveBtn, unreceiveBtnBtn, showScanBtn, endBtn;
     private EditText fileNameEdit;
-    private TextView charge, dataNum;
+    private TextView charge, dataNum, status;
     private int dataN = 0;//记录接收了多少组数据
     @SuppressLint("HandlerLeak")
-    private Handler handler = new Handler() {
+    private Handler handler = new Handler(Looper.getMainLooper()) {
         public void handleMessage(Message msg) {
+            Log.e(TAG, "handleMessage:"+ msg.what+','+msg.arg1 );
             switch (msg.what) {
                 case chargeChange:
                     charge.setText("" + msg.arg1);
                     break;
                 case getData:
                     dataNum.setText("" + msg.arg1);
+                    break;
+                case statusChange:
+                    if(msg.arg1==3){ //显示连接的设备名称
+                        String deviceName = targetDevice.getName();
+                        status.setText(statusList[msg.arg1]+deviceName.substring(deviceName.length()-7));
+                    }else{
+                        status.setText(statusList[msg.arg1]);
+                    }
                     break;
                 default:
                     break;
@@ -103,6 +111,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
         setContentView(R.layout.activity_main);
         charge = findViewById(R.id.charge);
         dataNum = findViewById(R.id.dataNum);
+        status = findViewById(R.id.status);
         showScanBtn = findViewById(R.id.scan);
         showScanBtn.setOnClickListener(this);
         receiveBtn = findViewById(R.id.receive);
@@ -114,7 +123,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
         endBtn = findViewById(R.id.end);
         endBtn.setOnClickListener(this);
         fileNameEdit = findViewById(R.id.fileName);
-
         //申请权限
         permissionReq();
         //开始扫描
@@ -130,18 +138,35 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 break;
             case R.id.receive:
 //                Log.e(TAG, "receive" );
-                eraseFlash(targetDevice);  //接收之前先把老数据清空，防止接收老数据
-                registDataReceiver(targetDevice);
+//                Log.e(TAG, "onClick: "+fileNameEdit.getText().toString() );
+                if(targetDevice == null) {
+                    Toast.makeText(MainActivity.this,"请先选择蓝牙设备",Toast.LENGTH_SHORT).show();
+                }else if (fileNameEdit.getText().toString().equals("")){ //文件名不能为空
+                    Toast.makeText(MainActivity.this,"请输入文件名",Toast.LENGTH_SHORT).show();
+                }else{
+                    eraseFlash(targetDevice);  //接收之前先把老数据清空，防止接收老数据
+                    registDataReceiver(targetDevice);
+                    fileNameEdit.setEnabled(false);
+                }
                 break;
             case R.id.unreceive:
-//                Log.e(TAG, "unreceive" );
-                unregistDataReceiver(targetDevice);
+                if(targetDevice == null) {
+                    Toast.makeText(MainActivity.this,"请先选择蓝牙设备",Toast.LENGTH_SHORT).show();
+                }else {
+                    unregistDataReceiver(targetDevice);
+                }
                 break;
 //            case R.id.erase:
 //                eraseFlash(targetDevice);
 //                break;
             case R.id.end:
-                disConnect(targetDevice);
+                if(targetDevice == null) {
+                    Toast.makeText(MainActivity.this,"未连接蓝牙设备",Toast.LENGTH_SHORT).show();
+                }else {
+                    disConnect(targetDevice);
+                    targetDevice = null;
+                    fileNameEdit.setEnabled(true);
+                }
                 break;
             default:
                 break;
@@ -204,13 +229,21 @@ public class MainActivity extends Activity implements View.OnClickListener {
             @Override
             public void onStart() {
 //                Log.e(TAG, "开始扫描");
-                Toast.makeText(MainActivity.this, "开始扫描", Toast.LENGTH_SHORT).show();
+//                Toast.makeText(MainActivity.this, "开始扫描", Toast.LENGTH_SHORT).show();
+                Message msg = new Message();
+                msg.what = statusChange;
+                msg.arg1 = 1;
+                handler.sendMessage(msg);
             }
 
             @Override
             public void onStop() {
 //                Log.e(TAG, "扫描结束");
-                Toast.makeText(MainActivity.this, "扫描结束", Toast.LENGTH_SHORT).show();
+//                Toast.makeText(MainActivity.this, "扫描结束", Toast.LENGTH_SHORT).show();
+                Message msg = new Message();
+                msg.what = statusChange;
+                msg.arg1 = 2;
+                handler.sendMessage(msg);
             }
         });
     }
@@ -244,6 +277,13 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
     //蓝牙连接
     public void connectDevice(Device device) {
+
+        //提示用户正在连接
+        Message msg = new Message();
+        msg.what = statusChange;
+        msg.arg1 = 4;
+        handler.sendMessage(msg);
+
         BleConnectOptions opts = new BleConnectOptions.Builder()
                 .setConnectTimeout(10 * 1000)
                 .setAutoConnect(true)
@@ -252,7 +292,11 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
             @Override
             public void onConnected(Device device) {
-                Toast.makeText(MainActivity.this, "已连接到设备" + device.getName(), Toast.LENGTH_LONG).show();
+                Message msg = new Message();
+                msg.what = statusChange;
+                msg.arg1 = 3;
+                handler.sendMessage(msg);
+//                Toast.makeText(MainActivity.this, "已连接到设备" + device.getName(), Toast.LENGTH_LONG).show();
 //                eraseFlash(targetDevice);
 //                Log.e(TAG, "已连接到设备"+ device.getName());
             }
@@ -273,6 +317,9 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
     //注册数据接收
     public void registDataReceiver(Device device) {
+
+        //文件保存名加上时间后缀
+        final LocalTime localTime = LocalTime.now();
         VitalClient.getInstance().registDataReceiver(device, new DataReceiveListener() {
             @Override
             public void onReceiveData(Device device, Map<String, Object> map) {
@@ -284,7 +331,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
 //                Log.e(TAG, "onReceiveData: ");
                 SampleData data = (SampleData) map.get("data");
                 try {
-                    write((int[]) data.extras.get("ecg"), fileNameEdit.getText().toString());
+                    write((int[]) data.extras.get("ecg"), fileNameEdit.getText().toString(),
+                            localTime.getHour()+":"+localTime.getMinute()+":"+localTime.getSecond());
 //                    Toast.makeText(MainActivity.this,"接收数据...",Toast.LENGTH_SHORT).show();
 //                    Log.e(TAG, "接收数据..." );
                 } catch (Exception e) {
@@ -321,9 +369,24 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
     //蓝牙断开
     public void disConnect(Device device) {
+
+        Log.e(TAG, "disConnect: start");
         VitalClient.getInstance().disconnect(device);
-        Toast.makeText(MainActivity.this, "蓝牙连接已断开", Toast.LENGTH_SHORT).show();
+
+        Message msg = new Message();
+        msg.what = statusChange;
+        msg.arg1 = 0;
+        handler.sendMessage(msg);
+
+//        Message msg1 = new Message();
+//        msg1.what = getData;
+//        msg1.arg1 = 0;
+//        handler.sendMessage(msg1);
+
+        Log.e(TAG, "disConnect: end");
+//        Toast.makeText(MainActivity.this, "蓝牙连接已断开", Toast.LENGTH_SHORT).show();
 //        Log.e(TAG, "蓝牙连接已断开");
+
     }
 
     //擦除flash
@@ -352,9 +415,9 @@ public class MainActivity extends Activity implements View.OnClickListener {
     }
 
     //保存数据
-    public void write(int[] a, String filename) {
+    public void write(int[] a, String timeloc, String filename) {
 //        Log.e(TAG, "write FirstECG: "+ a[0] );
-        String path = "/wangc_vivalnk/";
+        String path = "/心电贴/";
         //如果不存在，就创建目录
         File dir = new File(Environment.getExternalStorageDirectory() + path);
         if (!dir.exists()) {
@@ -362,10 +425,12 @@ public class MainActivity extends Activity implements View.OnClickListener {
         }
         FileWriter fileWriter = null;
         try {
-            if (filename == null) filename = "noName";
-            fileWriter = new FileWriter("" + dir + "/" + filename + ".txt", true);
+            filename = filename + timeloc;
+            fileWriter = new FileWriter("" + dir + "/"  + filename + "心电贴.txt", true);
+            long time = System.currentTimeMillis();
+            fileWriter.write(time + "\n");
             for (int i = 0; i < a.length; i++) {
-                fileWriter.write(String.valueOf(a[i]) + "\n");//换行转意
+                fileWriter.write(a[i] + "\n");//换行转意
             }
             fileWriter.flush();
             fileWriter.close();
